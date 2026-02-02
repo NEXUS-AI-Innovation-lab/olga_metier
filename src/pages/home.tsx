@@ -16,20 +16,10 @@ const isRendezVous = (data?: TaskData | null) => {
     if (!data) return false
 
     return (
-        data["forenae"] != null &&
-        data["adress.libelle"] != null
+        data["forename"] != null &&
+        data["name"] != null
     )
 }
-
-const getRendezVousLabel = (data?: TaskData | null) => {
-    if (!data) return null
-
-    return {
-        forename: data["forenae"],
-        name: data["adress.libelle"]
-    }
-}
-
 
 export default () => {
 
@@ -44,7 +34,6 @@ export default () => {
             const res = await fetch(BACKEND_URL + "/ongoing?inventory_id=test")
             if (!res.ok) throw new Error()
             const json = await res.json()
-            console.log(json);
 
             return json
         }
@@ -75,7 +64,8 @@ export default () => {
             {data && data.map((task: any, index: number) => {
                 if (!isRendezVous(task.data)) return null
 
-                const { forename, name } = getRendezVousLabel(task.data)!
+                const { forename, name } = task.data
+                const {current_node_id} = task
 
                 return (
                     <div
@@ -112,14 +102,16 @@ export default () => {
                         </div>
 
                         <div className="mt-3 flex justify-end">
-                            <span className="
+                            <span className={`
+                            ${current_node_id == null ? " bg-green-500" : "bg-zinc-200/60"}
                     text-xs font-medium
                     text-zinc-700
-                    bg-zinc-200/60
+                 
                     px-2 py-1
                     rounded-full
-                ">
-                                En attente
+                `}>
+                     {current_node_id == null ? "Confirmé" : "En attente"}
+                                
                             </span>
                         </div>
                     </div>
