@@ -16,7 +16,7 @@ const isRendezVous = (data?: TaskData | null) => {
     if (!data) return false
 
     return (
-        data["forename"] != null &&
+        data["first_name"] != null &&
         data["name"] != null
     )
 }
@@ -64,7 +64,7 @@ export default () => {
             {data && data.map((task: any, index: number) => {
                 if (!isRendezVous(task.data)) return null
 
-                const { forename, name } = task.data
+                const { first_name, name } = task.data
                 const {current_node_id} = task
 
                 return (
@@ -96,7 +96,7 @@ export default () => {
                                     Rendez-vous en cours
                                 </span>
                                 <span className="text-xs text-zinc-700">
-                                    {forename} · {name}
+                                    {first_name} · {name}
                                 </span>
                             </div>
                         </div>
