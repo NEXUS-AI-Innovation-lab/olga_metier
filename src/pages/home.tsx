@@ -16,8 +16,8 @@ const isRendezVous = (data?: TaskData | null) => {
     if (!data) return false
 
     return (
-        data["first_name"] != null &&
-        data["name"] != null
+        data["medical.first_name"] != null &&
+        data["medical.last_name"] != null
     )
 }
 
@@ -64,7 +64,7 @@ export default () => {
             {data && data.map((task: any, index: number) => {
                 if (!isRendezVous(task.data)) return null
 
-                const { first_name, name } = task.data
+          
                 const {current_node_id} = task
 
                 return (
@@ -96,7 +96,7 @@ export default () => {
                                     Rendez-vous en cours
                                 </span>
                                 <span className="text-xs text-zinc-700">
-                                    {first_name} · {name}
+                                    {task.data["medical.first_name"]} · {task.data["medical.last_name"]}
                                 </span>
                             </div>
                         </div>
@@ -132,6 +132,8 @@ export default () => {
                                     Close
                                 </Button>
                                 <Button color="primary" onPress={async () => {
+                                    console.log("data fr", formData);
+                                    
                                     const res = await fetch(BACKEND_URL + "/next?task_id=" + taskID, {
                                         method: "POST",
                                         headers: {

@@ -9,12 +9,12 @@ import FormInterpreter from "../components/formInterpreter"
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
-const isRendezVous = (data: any) => {
+const isRendezVous = (data : any) => {
     if (!data) return false
 
     return (
-        data["first_name"] != null &&
-        data["name"] != null
+        data["medical.first_name"] != null &&
+        data["medical.last_name"] != null
     )
 }
 
@@ -23,6 +23,9 @@ export default () => {
     const [form, setForm] = useState<null | Form>()
     const [taskID, setTaskId] = useState("")
     const [formData, setFormData] = useState<any>(null)
+
+    console.log(formData);
+    
 
     const { data, refetch } = useQuery({
         queryKey: ["onGoingTasks"],
@@ -45,7 +48,7 @@ export default () => {
                         <>{form != null && <>
                             <ModalHeader className="flex flex-col gap-1">Confirmation de rendez-vous</ModalHeader>
                             <ModalBody>
-                                <FormInterpreter setData={setFormData} form={form} isDisabled={false} />
+                                <FormInterpreter data={formData} setData={setFormData} form={form} isDisabled={false} />
                             </ModalBody>
                             <ModalFooter>
                                 <Button color="danger" variant="light" onPress={onClose}>
@@ -77,7 +80,7 @@ export default () => {
 
                 {data && data.map((task: any, index: number) => {
                     if (!isRendezVous(task.data)) return null
-                    const { first_name, name } = task.data!
+                 
                     const { current_node_id } = task
                     return (
                         <div
@@ -89,6 +92,10 @@ export default () => {
                                     const form = FormSchema.parse(json.form)
                                     setTaskId(task.id)
                                     setForm(form)
+                                    
+                                    
+                                    if(json.data)setFormData(json.data)
+                                    
                                 } catch {
 
                                 }
@@ -124,7 +131,7 @@ export default () => {
                                     </span>
                                     <span className="text-xs text-zinc-700">
 
-                                        {first_name} · {name}
+                                        {task.data["medical.first_name"]} · {task.data["medical.last_name"]}
                                     </span>
                                 </div>
                             </div>

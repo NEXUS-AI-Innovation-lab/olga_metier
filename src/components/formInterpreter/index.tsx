@@ -186,52 +186,114 @@ const ElementInterpreter = ({ element, isDisabled, data, onChange, allData, onGl
 }
 
 
-export default ({ form, data, isDisabled, setData }: { form: Form, isDisabled: boolean, data?: any, setData?: (form: Form) => void }) => {
+export default function FormPreview({
+    form,
+    data,
+    isDisabled,
+    setData
+}: {
+    form: Form
+    isDisabled: boolean
+    data?: any
+    setData?: (data: any) => void
+}) {
     const [emptyData, setEmptyData] = useState<any>(null)
-
-    useEffect(() => {
-        if (!data) setEmptyData(GeneratePreviewData(form))
-    }, [form.form])
-
-    useEffect(() => {
-        if (emptyData && setData) {
-            setData(emptyData)
-        }
-    }, [emptyData])
-
     const [childrenEditor, setChildrenEditor] = useState<ReactNode | null>(null)
 
-    if (!form) return <></>
-    return <div className="flex items-center w-full gap-6 justify-center h-full ">
-        <div className="flex h-full gap-1.5 w-full max-w-[500px] mx-auto flex-col">
-            <div className="flex flex-col">
-                <p className="text-sm ps-1 font-bold   dark:text-zinc-300 tracking-widest">
-                    {(form.form_label && form.form_label != '') ? <span className="">{form.form_label} </span>
-                        : <span className="!text-danger font-light">No form label</span>}</p>
-                <p className="text-[10px] ps-1 text-zinc-800  dark:text-zinc-400 tracking-widest">Form ID :
-                    {(form.form_id && form.form_id != '') ? <span className="!text-primary font-bold"> {form.form_id}</span> : <span className="!text-danger"> No form id</span>}</p>
+    const isControlled = data !== undefined
+    const shouldEmit = typeof setData === "function"
 
-                <p className="text-[10px] ps-1  text-zinc-600 mt-1 underline tracking-widest">Content :</p>
+
+    useEffect(() => {
+        if (!isControlled) {
+            const initial = GeneratePreviewData(form)
+            setEmptyData(initial)
+
+            if (shouldEmit) {
+                setData?.(initial)
+            }
+        }
+    }, [form.form])
+
+
+    const currentData = isControlled ? data : emptyData
+
+
+    const updateData = (key: string, value: any) => {
+        if (isControlled) {
+
+            setData?.({
+                ...data,
+                [key]: value
+            })
+        } else {
+
+            setEmptyData((prev: any) => {
+                const next = { ...prev, [key]: value }
+
+
+                if (shouldEmit) {
+                    setData?.(next)
+                }
+
+                return next
+            })
+        }
+    }
+
+    if (!form || !currentData) return null
+
+    return (
+        <div className="flex items-center w-full gap-6 justify-center h-full">
+            <div className="flex h-full gap-1.5 w-full max-w-[500px] mx-auto flex-col">
+                <div className="flex flex-col">
+                    <p className="text-sm ps-1 font-bold dark:text-zinc-300 tracking-widest">
+                        {form.form_label
+                            ? form.form_label
+                            : <span className="text-danger font-light">No form label</span>}
+                    </p>
+
+                    <p className="text-[10px] ps-1 text-zinc-800 dark:text-zinc-400 tracking-widest">
+                        Form ID :
+                        {form.form_id
+                            ? <span className="text-primary font-bold"> {form.form_id}</span>
+                            : <span className="text-danger"> No form id</span>}
+                    </p>
+
+                    <p className="text-[10px] ps-1 text-zinc-600 mt-1 underline tracking-widest">
+                        Content :
+                    </p>
+                </div>
+
+                {form.form.map((element, index) => (
+                    <ElementInterpreter
+                        key={index}
+                        element={element}
+                        isDisabled={isDisabled}
+                        setChildrenEditor={setChildrenEditor}
+                        data={
+                            "field_key" in element
+                                ? currentData[element.field_key]
+                                : null
+                        }
+                        allData={currentData}
+                        onChange={(value) => {
+                            if ("field_key" in element) {
+                                updateData(element.field_key, value)
+                            }
+                        }}
+                        onGlobalChange={(key, value) => {
+                            updateData(key, value)
+                        }}
+                    />
+                ))}
             </div>
 
-            {(emptyData || data) && <>{form.form.map((element, index) => {
-                return <ElementInterpreter setChildrenEditor={setChildrenEditor} isDisabled={isDisabled} element={element} onChange={(value) => {
-                    if ('field_key' in element) {
-                        if (!data && emptyData) setEmptyData((prev: any) => ({ ...prev, [element.field_key]: value }))
-                        // else if (setData) setData({ ...emptyData, [element.field_key]: value })
-                    }
-                }} allData={emptyData}
-                    onGlobalChange={(key, value) => {
-                        if (!data && emptyData) setEmptyData((prev: any) => ({ ...prev, [key]: value }))
-                        // else if (setData) setData(data)
-                    }}
-                    data={'field_key' in element ? emptyData[element.field_key] : null} key={index} />
-            })
-            }</>}
+            {childrenEditor && (
+                <div className="w-full h-full">
+                    {childrenEditor}
+                </div>
+            )}
         </div>
-
-        {childrenEditor && <div className="w-full h-full">
-            {childrenEditor}
-        </div>}
-    </div>
+    )
 }
