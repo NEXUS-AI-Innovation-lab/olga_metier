@@ -6,6 +6,7 @@ import z from "zod"
 import { FormSchema, type Form } from "../components/formInterpreter/types/type"
 import FormInterpreter from "../components/formInterpreter"
 import Navbar from "../components/Navbar"
+import { MdOutlineKeyboardArrowRight } from "react-icons/md";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -37,6 +38,17 @@ export default () => {
         }
     })
 
+    const { data: startedTasks, isLoading: isStartedTasksLoading, refetch : refetchStartedTasks } = useQuery({
+        queryKey: ["getStartedTasks", email],
+        queryFn: async () => {
+            const res = await fetch(API_URL + "/getStartedTasks?email=" + email)
+            if (!res.ok) throw new Error()
+            return z.array(z.record(z.string(), z.any())).parse(await res.json())
+        }
+    })
+
+
+
     const { data: onGoingTasks, isLoading: isOnGoingTasksLoading, refetch } = useQuery({
         queryKey: ["getOnGoingTasks", email],
         queryFn: async () => {
@@ -45,6 +57,12 @@ export default () => {
             return z.array(z.record(z.string(), z.any())).parse(await res.json())
         }
     })
+
+    const fiteredStartedTasks = useMemo(() => {
+        if (startedTasks && !isStartedTasksLoading && onGoingTasks && !isOnGoingTasksLoading) {            
+            return startedTasks.filter(e => onGoingTasks && !onGoingTasks.find(e2 => e2.id == e.id))
+        } else return null
+    }, [onGoingTasks, startedTasks])
 
 
     return <div className="flex h-screen w-screen bg-neutral-100 flex-col">
@@ -55,13 +73,13 @@ export default () => {
             <h2 className="text-xl font-light semiexpanded">{email}</h2>
             <div className="flex mt-10 gap-10">
                 <div className="flex flex-col w-100 gap-3">
-                    <p className="text-xs opacity-80">Taches à lancer</p>
+                    <p className="text-xs opacity-80">Launchable tasks</p>
                     {!isInventoriesLoading && data && data.map(inventory => (
                         <div className="text-xs p-3 bg-white rounded-3xl w-full flex flex-col">
                             <p>{inventory.code}</p>
                             <p className="opacity-50">{inventory.description}</p>
                             <Button onPress={async () => {
-                                const res = await fetch(API_URL + "/startTask?inventory_id=" + inventory.code)
+                                const res = await fetch(API_URL + "/startTask?inventory_id=" + inventory.code + "&email=" + email)
                                 try {
                                     if (!res.ok) throw new Error()
                                     const json = await res.json()
@@ -78,7 +96,7 @@ export default () => {
                 </div>
 
                 <div className="flex flex-col w-100 gap-3">
-                    <p className="text-xs opacity-80">Taches à prendre</p>
+                    <p className="text-xs opacity-80">Takable tasks</p>
 
                     {!isOnGoingTasksLoading && onGoingTasks && onGoingTasks.map(e => (
                         <div className="text-xs p-3 bg-white rounded-3xl w-full flex  items-center gap-2">
@@ -101,6 +119,20 @@ export default () => {
                     ))}
 
                     {!isOnGoingTasksLoading && onGoingTasks && onGoingTasks.length == 0 && <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à prendre</p>}
+                </div>
+
+                <div className="flex flex-col w-100 gap-3">
+                    <p className="text-xs opacity-80">Tasks that you have started</p>
+
+                    {fiteredStartedTasks && fiteredStartedTasks.map(e => (
+                        <div className="text-xs p-3 bg-white rounded-3xl w-full flex  items-center gap-2">
+                            <p>{e.inventory_code}</p>
+                            <p className="opacity-50">{e.current_node_id}</p>
+                            <MdOutlineKeyboardArrowRight className="ms-auto" />
+                        </div>
+                    ))}
+
+                    {fiteredStartedTasks && fiteredStartedTasks.length == 0 && <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à prendre</p>}
                 </div>
             </div>
 
@@ -140,9 +172,10 @@ export default () => {
                                 } else {
                                     setForm(null)
                                     setIsTaskDone(true)
-                                    if(json.next_groups && Array.isArray(json.next_groups)) setNextGroups(json.next_groups)
+                                    if (json.next_groups && Array.isArray(json.next_groups)) setNextGroups(json.next_groups)
                                 }
                                 refetch()
+                                refetchStartedTasks()
                             } catch {
 
                             }
