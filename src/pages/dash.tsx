@@ -1,5 +1,6 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react"
 import { useQuery } from "@tanstack/react-query"
+import { CiCircleCheck } from "react-icons/ci";
 import { useMemo, useState } from "react"
 import z from "zod"
 import { FormSchema, type Form } from "../components/formInterpreter/types/type"
@@ -19,7 +20,9 @@ export default () => {
 
     const [form, setForm] = useState<Form | null>(null)
     const [taskId, setTaskId] = useState("")
-    const [formData, setFormData] = useState<any>(null)
+    const [formData, setFormData] = useState<any>({})
+    const [nextGroups, setNextGroups] = useState<null | Array<string>>(null)
+    const [isTaskDone, setIsTaskDone] = useState<boolean>(false)
 
     const email = useMemo(() => {
         return localStorage.getItem("login")
@@ -101,15 +104,28 @@ export default () => {
                 </div>
             </div>
 
-            <Modal className="bg-neutral-100" onClose={() => setForm(null)} isOpen={form != null}>
+            <Modal className="bg-neutral-100" onClose={() => setForm(null)} isOpen={form != null || isTaskDone}>
                 <ModalContent>
-                    <ModalHeader>Start Task</ModalHeader>
+                    <ModalHeader>Task executor</ModalHeader>
                     <ModalBody>
+                        {isTaskDone && <div className="flex flex-col items-center">
+                            <p className="semiexpanded font-semibold font-2xl mb-1">Tache validée</p>
+                            <CiCircleCheck className="!text-success" size={40} />
+                            {nextGroups && (
+                                <p className="text-sm  mt-10">
+                                    Ces groupes vont prendre le relais : <span className="font-semibold">{nextGroups.join(", ")}</span>
+                                </p>
+                            )}
+                        </div>}
                         {form != null && <FormInterpreter data={formData} setData={setFormData} form={form} isDisabled={false} />}
                     </ModalBody>
                     <ModalFooter>
                         <Button onPress={async () => {
-
+                            if (isTaskDone) {
+                                setIsTaskDone(false)
+                                setNextGroups(null)
+                                return
+                            }
                             try {
                                 const res = await fetch(API_URL + "/next?task_id=" + taskId + "&email=" + email, {
                                     method: "POST",
@@ -119,10 +135,12 @@ export default () => {
                                     body: JSON.stringify(formData)
                                 })
                                 const json = await res.json()
-                                if(json.form){
+                                if (json.form) {
                                     setForm(FormSchema.parse(json.form))
-                                }else {
+                                } else {
                                     setForm(null)
+                                    setIsTaskDone(true)
+                                    if(json.next_groups && Array.isArray(json.next_groups)) setNextGroups(json.next_groups)
                                 }
                                 refetch()
                             } catch {
@@ -131,7 +149,7 @@ export default () => {
 
 
 
-                        }} color="primary">Next</Button>
+                        }} color="primary">{isTaskDone ? "OK" : "Next"}</Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
