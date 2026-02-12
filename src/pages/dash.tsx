@@ -75,25 +75,25 @@ export default () => {
             <div className="flex mt-10 gap-10">
                 <div className="flex flex-col w-100 gap-3">
                     <p className="text-xs opacity-80">Launchable tasks</p>
-                    {!isInventoriesLoading && data && data.map(inventory => (
+                    {!isInventoriesLoading && data && data.filter(inv => inv.canStart).map(inventory => (
                         <div className="text-xs p-3 bg-white rounded-3xl w-full flex flex-col" key={inventory.code}>
                             <p>{inventory.code}</p>
                             <p className="opacity-50">{inventory.description}</p>
-                            {inventory.canStart && (
-                                <Button onPress={async () => {
-                                    const res = await fetch(API_URL + "/startTask?inventory_id=" + inventory.code + "&email=" + email)
-                                    try {
-                                        if (!res.ok) throw new Error()
-                                        const json = await res.json()
-                                        const form = FormSchema.parse(json.form)
-                                        setForm(form)
-                                        setTaskId(json.task_id)
-                                    } catch {}
-                                }} color="primary" size="sm" radius="full" className="ms-auto">Start</Button>
-                            )}
+                            <Button onPress={async () => {
+                                const res = await fetch(API_URL + "/startTask?inventory_id=" + inventory.code + "&email=" + email)
+                                try {
+                                    if (!res.ok) throw new Error()
+                                    const json = await res.json()
+                                    const form = FormSchema.parse(json.form)
+                                    setForm(form)
+                                    setTaskId(json.task_id)
+                                } catch {}
+                            }} color="primary" size="sm" radius="full" className="ms-auto">Start</Button>
                         </div>
                     ))}
-                    {!isInventoriesLoading && data && data.length == 0 && <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à lancer</p>}
+                    {!isInventoriesLoading && data && data.filter(inv => inv.canStart).length === 0 && (
+                        <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à lancer</p>
+                    )}
                 </div>
 
                 <div className="flex flex-col w-100 gap-3">
