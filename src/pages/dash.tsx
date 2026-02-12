@@ -7,18 +7,19 @@ import { FormSchema, type Form } from "../components/formInterpreter/types/type"
 import FormInterpreter from "../components/formInterpreter"
 import Navbar from "../components/Navbar"
 import { MdOutlineKeyboardArrowRight } from "react-icons/md";
+import InventoryCard from "../components/InventoryCard"
+import TaskCard from "../components/TaskCard"
 
 const API_URL = import.meta.env.VITE_BACKEND_URL
 
 const inventorySchema = z.object({
     code: z.string(),
-    description: z.string(),
-    canStart: z.boolean().optional() // ← Ajout ici
+    description: z.string().optional(),
+    canStart: z.boolean().optional()
 })
 
 
 export default () => {
-
 
     const [form, setForm] = useState<Form | null>(null)
     const [taskId, setTaskId] = useState("")
@@ -26,126 +27,128 @@ export default () => {
     const [nextGroups, setNextGroups] = useState<null | Array<string>>(null)
     const [isTaskDone, setIsTaskDone] = useState<boolean>(false)
 
-    const email = useMemo(() => {
-        return localStorage.getItem("login")
-    }, [])
+    const email = useMemo(() => localStorage.getItem("login"), [])
 
     const { data, isLoading: isInventoriesLoading } = useQuery({
-        queryKey: ["getAllInventories"],
+        queryKey: ["getAllInventories", email],
         queryFn: async () => {
-            const res = await fetch(API_URL + "/getAllInventoriesForUser?email=" + email)
+            const res = await fetch(API_URL + "/getAllInventoriesForUser?email=" + encodeURIComponent(String(email)))
             if (!res.ok) throw new Error()
             return z.array(inventorySchema).parse(await res.json())
-        }
+        },
+        enabled: !!email
     })
 
     const { data: startedTasks, isLoading: isStartedTasksLoading, refetch : refetchStartedTasks } = useQuery({
         queryKey: ["getStartedTasks", email],
         queryFn: async () => {
-            const res = await fetch(API_URL + "/getStartedTasks?email=" + email)
+            const res = await fetch(API_URL + "/getStartedTasks?email=" + encodeURIComponent(String(email)))
             if (!res.ok) throw new Error()
             return z.array(z.record(z.string(), z.any())).parse(await res.json())
-        }
+        },
+        enabled: !!email
     })
-
-
 
     const { data: onGoingTasks, isLoading: isOnGoingTasksLoading, refetch } = useQuery({
         queryKey: ["getOnGoingTasks", email],
         queryFn: async () => {
-            const res = await fetch(API_URL + "/ongoingUser?email=" + email)
+            const res = await fetch(API_URL + "/ongoingUser?email=" + encodeURIComponent(String(email)))
             if (!res.ok) throw new Error()
             return z.array(z.record(z.string(), z.any())).parse(await res.json())
-        }
+        },
+        enabled: !!email
     })
 
-    const fiteredStartedTasks = useMemo(() => {
-        if (startedTasks && !isStartedTasksLoading && onGoingTasks && !isOnGoingTasksLoading) {            
-            return startedTasks.filter(e => onGoingTasks && !onGoingTasks.find(e2 => e2.id == e.id))
-        } else return null
-    }, [onGoingTasks, startedTasks])
-
+    const launchable = data ? data.filter(i => i.canStart) : []
+    const takable = onGoingTasks ?? []
+    const started = (startedTasks ?? []).filter(s => !takable.find((t:any)=>t.id===s.id))
 
     return <div className="flex h-screen w-screen bg-neutral-100 flex-col">
         <Navbar />
-        <div className="p-4 flex flex-col">
+        <div className="p-6 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-semibold semiexpanded">Tasks</h1>
+                    <p className="text-sm text-zinc-600 mt-1">{email ?? "Invité"}</p>
+                </div>
+                <div className="flex gap-3">
+                    <div className="px-3 py-1 bg-white rounded-full shadow-sm text-xs">Launchable: <span className="font-semibold">{launchable.length}</span></div>
+                    <div className="px-3 py-1 bg-white rounded-full shadow-sm text-xs">Takable: <span className="font-semibold">{takable.length}</span></div>
+                    <div className="px-3 py-1 bg-white rounded-full shadow-sm text-xs">Started: <span className="font-semibold">{started.length}</span></div>
+                </div>
+            </div>
 
-            <h1 className="text-2xl font-semibold semiexpanded">Tasks</h1>
-            <h2 className="text-xl font-light semiexpanded">{email}</h2>
-            <div className="flex mt-10 gap-10">
-                <div className="flex flex-col w-100 gap-3">
-                    <p className="text-xs opacity-80">Launchable tasks</p>
-                    {!isInventoriesLoading && data && data.filter(inv => inv.canStart).map(inventory => (
-                        <div className="text-xs p-3 bg-white rounded-3xl w-full flex flex-col" key={inventory.code}>
-                            <p>{inventory.code}</p>
-                            <p className="opacity-50">{inventory.description}</p>
-                            <Button onPress={async () => {
-                                const res = await fetch(API_URL + "/startTask?inventory_id=" + inventory.code + "&email=" + email)
+            <div className="grid grid-cols-3 gap-6">
+                {/* Launchable column */}
+                <section className="col-span-1">
+                    <h3 className="text-sm font-medium mb-2">Lancer une demande</h3>
+                    <p className="text-xs text-zinc-500 mb-3">Inventaires où vous pouvez démarrer une tâche</p>
+                    <div className="flex flex-col gap-3">
+                        {!isInventoriesLoading && launchable.length > 0 ? launchable.map(inv => (
+                            <InventoryCard key={inv.code} inventory={inv} onStart={async () => {
+                                const res = await fetch(API_URL + "/startTask?inventory_id=" + inv.code + "&email=" + email)
                                 try {
                                     if (!res.ok) throw new Error()
                                     const json = await res.json()
-                                    const form = FormSchema.parse(json.form)
-                                    setForm(form)
+                                    setForm(FormSchema.parse(json.form))
                                     setTaskId(json.task_id)
                                 } catch {}
-                            }} color="primary" size="sm" radius="full" className="ms-auto">Start</Button>
-                        </div>
-                    ))}
-                    {!isInventoriesLoading && data && data.filter(inv => inv.canStart).length === 0 && (
-                        <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à lancer</p>
-                    )}
-                </div>
+                            }} />
+                        )) : !isInventoriesLoading && <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">Aucune tâche à lancer</div>}
+                    </div>
+                </section>
 
-                <div className="flex flex-col w-100 gap-3">
-                    <p className="text-xs opacity-80">Takable tasks</p>
-
-                    {!isOnGoingTasksLoading && onGoingTasks && onGoingTasks.map(e => (
-                        <div className="text-xs p-3 bg-white rounded-3xl w-full flex  items-center gap-2">
-                            <p>{e.inventory_code}</p>
-                            <p className="opacity-50">{e.current_node_id}</p>
-                            <Button onPress={async () => {
-                                const res = await fetch(API_URL + "/status?task_id=" + e.id)
+                {/* Takable column */}
+                <section className="col-span-1">
+                    <h3 className="text-sm font-medium mb-2">Demande à prendre</h3>
+                    <p className="text-xs text-zinc-500 mb-3">Demande disponibles</p>
+                    <div className="flex flex-col gap-3">
+                        {!isOnGoingTasksLoading && takable.length > 0 ? takable.map((t: any) => (
+                            <TaskCard key={t.id} task={t} actionLabel="Poursuivre" onAction={async () => {
+                                const res = await fetch(API_URL + "/status?task_id=" + t.id)
                                 try {
                                     if (!res.ok) throw new Error()
                                     const json = await res.json()
-                                    const form = FormSchema.parse(json.form)
-                                    setForm(form)
+                                    setForm(FormSchema.parse(json.form))
                                     setFormData(json.data)
-                                    setTaskId(e.id)
+                                    setTaskId(t.id)
                                 } catch {}
+                            }} />
+                        )) : !isOnGoingTasksLoading && <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">Aucune demande à prendre</div>}
+                    </div>
+                </section>
 
-                            }} color="primary" size="sm" radius="full" className="ms-auto">Poursuivre</Button>
-                        </div>
-                    ))}
-
-                    {!isOnGoingTasksLoading && onGoingTasks && onGoingTasks.length == 0 && <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à prendre</p>}
-                </div>
-
-                <div className="flex flex-col w-100 gap-3">
-                    <p className="text-xs opacity-80">Tasks that you have started</p>
-
-                    {fiteredStartedTasks && fiteredStartedTasks.map(e => (
-                        <div className="text-xs p-3 bg-white rounded-3xl w-full flex  items-center gap-2">
-                            <p>{e.inventory_code}</p>
-                            <p className="opacity-50">{e.current_node_id}</p>
-                            <MdOutlineKeyboardArrowRight className="ms-auto" />
-                        </div>
-                    ))}
-
-                    {fiteredStartedTasks && fiteredStartedTasks.length == 0 && <p className="text-xs p-15 bg-white rounded-3xl text-warning text-center">Aucune tache à prendre</p>}
-                </div>
+                {/* Started column */}
+                <section className="col-span-1">
+                    <h3 className="text-sm font-medium mb-2">Demandes démarrées</h3>
+                    <p className="text-xs text-zinc-500 mb-3">Vos demandes en cours ou en pause</p>
+                    <div className="flex flex-col gap-3">
+                        {started && started.length > 0 ? started.map((t: any) => (
+                            <TaskCard key={t.id} task={t} onClick={async () => {
+                                try {
+                                    const res = await fetch(API_URL + "/status?task_id=" + t.id)
+                                    if (!res.ok) throw new Error()
+                                    const json = await res.json()
+                                    setForm(FormSchema.parse(json.form))
+                                    setFormData(json.data)
+                                    setTaskId(t.id)
+                                } catch {}
+                            }} actionLabel="Voir" />
+                        )) : <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">Aucune tâche démarrée</div>}
+                    </div>
+                </section>
             </div>
 
             <Modal className="bg-neutral-100" onClose={() => setForm(null)} isOpen={form != null || isTaskDone}>
                 <ModalContent>
-                    <ModalHeader>Task executor</ModalHeader>
+                    <ModalHeader>Exécution de la tâche</ModalHeader>
                     <ModalBody>
                         {isTaskDone && <div className="flex flex-col items-center">
-                            <p className="semiexpanded font-semibold font-2xl mb-1">Tache validée</p>
+                            <p className="semiexpanded font-semibold text-lg mb-1">Tâche validée</p>
                             <CiCircleCheck className="!text-success" size={40} />
                             {nextGroups && (
-                                <p className="text-sm  mt-10">
-                                    Ces groupes vont prendre le relais : <span className="font-semibold">{nextGroups.join(", ")}</span>
+                                <p className="text-sm mt-4">
+                                    Les groupes suivants prendront le relais : <span className="font-semibold">{nextGroups.join(", ")}</span>
                                 </p>
                             )}
                         </div>}
@@ -161,9 +164,7 @@ export default () => {
                             try {
                                 const res = await fetch(API_URL + "/next?task_id=" + taskId + "&email=" + email, {
                                     method: "POST",
-                                    headers: {
-                                        "content-type": "application/json"
-                                    },
+                                    headers: { "content-type": "application/json" },
                                     body: JSON.stringify(formData)
                                 })
                                 const json = await res.json()
@@ -176,18 +177,11 @@ export default () => {
                                 }
                                 refetch()
                                 refetchStartedTasks()
-                            } catch {
-
-                            }
-
-
-
+                            } catch {}
                         }} color="primary">{isTaskDone ? "OK" : "Next"}</Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
-
         </div>
-
     </div>
 }
