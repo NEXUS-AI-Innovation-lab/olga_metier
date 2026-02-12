@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router";
 import Home from "./pages/home";
 import Login from "./pages/login";
 import AuthProvider from "./features/auth/context/AuthProvider";
-import Infermiers from "./pages/infermiers";
+import Acteurs from "./pages/acteurs";
 import Dash from "./pages/dash";
 
 
@@ -18,9 +18,9 @@ const router = createBrowserRouter([
         element: <AuthProvider><Dash /></AuthProvider>
     },
     {
-        path: "/infermier",
+        path: "/acteurs",
         element: <AuthProvider>
-            <Infermiers />
+            <Acteurs />
         </AuthProvider>
     },
     {
