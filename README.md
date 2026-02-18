@@ -1,73 +1,145 @@
-# React + TypeScript + Vite
+# OLGA METIER 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Le moteur de workflow qui libère les équipes métier de l'infrastructure**
 
-Currently, two official plugins are available:
+OLGA METIER est une **boîte d'exécution de workflows métier** qui permet aux équipes de se concentrer UNIQUEMENT sur leur logique applicative. Plus besoin de perdre du temps sur l'infrastructure, la persistence ou la gestion d'état.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Ce que fait OLGA METIER
 
-## React Compiler
+1. **Lance des instances de workflow** à la demande (`/startTask`)
+2. **Interprète les étapes** définies par votre logique métier
+3. **Sauvegarde automatiquement** les réponses et les états d'avancement
+4. **Gère la persistence** de chaque instance et leur cycle de vie
+5. **Maintient le contexte** entre les différentes étapes d'un workflow
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Architecture
 
-## Expanding the ESLint configuration
+OLGA METIER expose une API REST simple qui permet d'intégrer vos workflows dans n'importe quelle interface :
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Frontend  │────▶│   Métier    │────▶│  Votre      │
+│  (React)    │◀────│  (Backend)  │◀────│  Logique    │
+└─────────────┘     └──────────────┘     └─────────────┘
+```
+Note : Le code backend (OLGA-METIER-2) n'est pas accessible - c'est une boîte noire qui exécute vos workflows. Vous interagissez avec lui uniquement via son API.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Démarrage rapide
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Cloner le repository
+git clone https://github.com/NEXUS-AI-Innovation-lab/olga-metier
+cd OLGA-METIER-2
+
+# Installer les dépendances
+npm install
+
+# Lancer le frontend
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Créez un fichier `.env` à la racine :
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_BACKEND_URL=http://localhost:9091
 ```
+
+## API Endpoints
+
+### Démarrer une nouvelle tâche
+```
+GET /startTask?inventory_id={id}&email={email}
+```
+Lance une nouvelle instance de workflow pour l'inventaire spécifié.
+
+### Passer à l'étape suivante
+```
+POST /next?task_id={id}&email={email}
+Body: { ... données du formulaire ... }
+```
+Soumet les données de l'étape courante et passe à la suivante.
+
+### Voir l'état d'une tâche
+```
+GET /status?task_id={id}
+```
+Récupère l'état actuel et le formulaire d'une tâche en cours.
+
+### Lister les tâches disponibles
+```
+GET /ongoingUser?email={email}
+```
+Récupère toutes les tâches en cours pour un utilisateur.
+
+### Lister les inventaires disponibles
+```
+GET /getAllInventoriesForUser?email={email}
+```
+Récupère tous les inventaires accessibles à l'utilisateur.
+
+## Interface utilisateur
+
+Le frontend propose une interface intuitive organisée en 3 colonnes :
+
+- **Lancer une demande** : les inventaires sur lesquels l'utilisateur peut initier un workflow
+- **Demande à prendre** : les tâches disponibles en attente de traitement
+- **Demandes démarrées** : les tâches déjà initiées par l'utilisateur
+
+### Exemple d'utilisation (médical)
+
+```jsx
+// Démarrer une nouvelle tâche (prise de rendez-vous)
+const handleStartTask = async () => {
+  const res = await fetch(`${BACKEND_URL}/startTask?inventory_id=test&email=${email}`);
+  const json = await res.json();
+  
+  // Le formulaire de saisie est automatiquement généré
+  setForm(FormSchema.parse(json.form));
+  setTaskId(json.task_id);
+};
+```
+
+## Pour qui ?
+
+- **Équipes produit** : elles livrent plus vite, sans dettes techniques
+- **Équipes data** : elles orchestrent leurs pipelines sans s'embourber
+- **Startups médicales** : gestion de rendez-vous, dossiers patients, etc.
+
+## Avantages
+
+- **Zéro gestion d'état** : la persistence est automatique
+- **Formulaires dynamiques** : générés automatiquement depuis les schémas
+- **Multi-utilisateurs** : gestion des rôles et des groupes
+- **Workflows réutilisables** : une fois définis, utilisables partout
+
+## Structure du projet
+
+```
+OLGA-METIER-2/
+├── src/
+│   ├── components/          # Composants réutilisables
+│   │   ├── formInterpreter/ # Moteur de rendu de formulaires
+│   │   ├── InventoryCard    # Carte d'inventaire
+│   │   └── TaskCard        # Carte de tâche
+│   ├── features/            # Fonctionnalités
+│   │   └── auth/           # Authentification
+│   ├── pages/               # Pages de l'application
+│   │   ├── Login.tsx       # Page de connexion
+│   │   ├── Dashboard.tsx   # Vue principale
+│   │   └── RendezVous.tsx  # Exemple métier
+│   └── App.tsx              # Point d'entrée
+```
+
+## Contribution
+
+OLGA METIER est open source. Toutes les contributions sont les bienvenues !
+
+1. Forkez le projet
+2. Créez votre branche (`git checkout -b feature/ma-feature`)
+3. Committez vos changements (`git commit -m 'Ajout de ma feature'`)
+4. Pushez (`git push origin feature/ma-feature`)
+5. Ouvrez une Pull Request
