@@ -1,4 +1,4 @@
-# OLGA METIER 
+# OLGA METIER
 
 **Le moteur de workflow qui libère les équipes métier de l'infrastructure**
 
@@ -22,6 +22,7 @@ OLGA METIER expose une API REST simple qui permet d'intégrer vos workflows dans
 │  (React)    │◀────│  (Backend)  │◀────│  Logique    │
 └─────────────┘     └──────────────┘     └─────────────┘
 ```
+
 Note : Le code backend (OLGA-METIER-2) n'est pas accessible - c'est une boîte noire qui exécute vos workflows. Vous interagissez avec lui uniquement via son API.
 
 ## Démarrage rapide
@@ -51,34 +52,44 @@ VITE_BACKEND_URL=http://localhost:9091
 ## API Endpoints
 
 ### Démarrer une nouvelle tâche
+
 ```
 GET /startTask?inventory_id={id}&email={email}
 ```
+
 Lance une nouvelle instance de workflow pour l'inventaire spécifié.
 
 ### Passer à l'étape suivante
+
 ```
 POST /next?task_id={id}&email={email}
 Body: { ... données du formulaire ... }
 ```
+
 Soumet les données de l'étape courante et passe à la suivante.
 
 ### Voir l'état d'une tâche
+
 ```
 GET /status?task_id={id}
 ```
+
 Récupère l'état actuel et le formulaire d'une tâche en cours.
 
 ### Lister les tâches disponibles
+
 ```
 GET /ongoingUser?email={email}
 ```
+
 Récupère toutes les tâches en cours pour un utilisateur.
 
 ### Lister les inventaires disponibles
+
 ```
 GET /getAllInventoriesForUser?email={email}
 ```
+
 Récupère tous les inventaires accessibles à l'utilisateur.
 
 ## Interface utilisateur
