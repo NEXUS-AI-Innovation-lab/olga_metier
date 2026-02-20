@@ -1,3 +1,5 @@
+# OLGA METIER
+
 ## ⚠️ Mise en garde importante
 
 Pour un fonctionnement maximal de cette application, il est nécessaire de lancer le backend à l'aide de `docker-compose`. Vous pouvez retrouver les fichiers nécessaires au lancement du backend à l'adresse suivante :
@@ -5,7 +7,6 @@ Pour un fonctionnement maximal de cette application, il est nécessaire de lance
 👉 [https://github.com/NEXUS-AI-Innovation-lab/olga-designer-admin-backend](https://github.com/NEXUS-AI-Innovation-lab/olga-designer-admin-backend)
 
 Assurez-vous que le backend est bien démarré avant d'utiliser cette application frontend.
-# OLGA METIER
 
 **Le moteur de workflow qui libère les équipes métier de l'infrastructure**
 
@@ -151,6 +152,7 @@ OLGA-METIER-2/
 │   │   └── RendezVous.tsx  # Exemple métier
 │   └── App.tsx              # Point d'entrée
 ```
+
 ## Vidéos de démonstration
 
 Vous trouverez des vidéos expliquant le fonctionnement de l'application métier dans le dossier `application_web_metier` sur Google Drive :
