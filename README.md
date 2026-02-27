@@ -316,7 +316,7 @@ OLGA-METIER-2/
 
 Vous trouverez des vidéos expliquant le fonctionnement de l'application métier dans le dossier `application_web_metier` sur Google Drive :
 
-👉 [https://drive.google.com/drive/folders/11PsjHdyLRaDCrUcrGKBh8lVyZsZUBdN3?usp=sharing](https://drive.google.com/drive/folders/11PsjHdyLRaDCrGKBh8lVyZsZUBdN3?usp=sharing)
+👉 [Dossier des vidéos de démonstration](https://drive.google.com/drive/folders/11PsjHdyLRaDCrUcrGKBh8lVyZsZUBdN3)
 
 ## Contribution
 
