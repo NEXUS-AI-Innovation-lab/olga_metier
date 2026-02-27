@@ -24,11 +24,16 @@ OLGA METIER est une **boîte d'exécution de workflows métier** qui permet aux 
 
 OLGA METIER expose une API REST simple qui permet d'intégrer vos workflows dans n'importe quelle interface :
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Frontend  │────▶│   Métier    │────▶│  Votre      │
-│  (React)    │◀────│  (Backend)  │◀────│  Logique    │
-└─────────────┘     └──────────────┘     └─────────────┘
+```mermaid
+graph LR
+  A["Frontend<br/>(React)"]
+  B["Metier<br/>(Backend)"]
+  C["Votre logique"]
+
+  A --> B
+  B --> A
+  B --> C
+  C --> B
 ```
 
 Note : Le code backend (OLGA-METIER-2) n'est pas accessible - c'est une boîte noire qui exécute vos workflows. Vous interagissez avec lui uniquement via son API.
