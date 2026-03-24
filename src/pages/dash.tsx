@@ -5,16 +5,13 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  ScrollShadow,
+  ScrollShadow
 } from "@heroui/react";
 import { useQuery } from "@tanstack/react-query";
 import { CiCircleCheck } from "react-icons/ci";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import z from "zod";
-import {
-  FormSchema,
-  type Form,
-} from "../components/formInterpreter/types/type";
+import { FormSchema, type Form } from "../components/formInterpreter/types/type";
 import FormInterpreter from "../components/formInterpreter";
 import Navbar from "../components/Navbar";
 import InventoryCard from "../components/InventoryCard";
@@ -25,10 +22,12 @@ const API_URL = import.meta.env.VITE_BACKEND_URL;
 const inventorySchema = z.object({
   code: z.string(),
   description: z.string().optional(),
-  canStart: z.boolean().optional(),
+  canStart: z.boolean().optional()
 });
 
 export default () => {
+  console.log("=== DASH.TSX RUNNING ===", new Date().toISOString());
+
   const [form, setForm] = useState<Form | null>(null);
   const [taskId, setTaskId] = useState("");
   const [formData, setFormData] = useState<any>({});
@@ -37,56 +36,110 @@ export default () => {
 
   const email = useMemo(() => localStorage.getItem("login"), []);
 
+  // -------- Auto-open from URL (survives auth redirect that removes querystring) --------
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromUrl = urlParams.get("task_id");
+
+    // 1) Persist task_id as soon as we see it (survive auth redirect/remount)
+    if (fromUrl) {
+      sessionStorage.setItem("pending_task_id", fromUrl);
+    }
+
+    // 2) Take task_id from URL OR sessionStorage
+    const taskIdToOpen = fromUrl ?? sessionStorage.getItem("pending_task_id");
+
+    console.log("[AUTOOPEN] fromUrl =", fromUrl, "taskIdToOpen =", taskIdToOpen);
+
+    if (!taskIdToOpen) return;
+
+    fetch(API_URL + "/status?task_id=" + taskIdToOpen)
+      .then(async (res) => {
+        console.log("[AUTOOPEN] /status status =", res.status);
+
+        const txt = await res.text();
+        console.log("[AUTOOPEN] /status raw body =", txt);
+
+        if (!res.ok) return;
+
+        const json = JSON.parse(txt);
+        console.log("[AUTOOPEN] /status json keys =", Object.keys(json));
+
+        const parsed = FormSchema.parse(json.form);
+        console.log("[AUTOOPEN] FormSchema.parse OK, label =", parsed?.form_label);
+
+        setForm(parsed);
+        setFormData(json.data ?? {});
+        setTaskId(taskIdToOpen);
+
+        // 3) Clear pending id so it doesn't reopen later
+        sessionStorage.removeItem("pending_task_id");
+
+        console.log("[AUTOOPEN] setForm called");
+      })
+      .catch((e) => console.error("[AUTOOPEN] error", e));
+  }, []);
+
+  // -------- DEBUG watchers (optional: remove later) --------
+  useEffect(() => {
+    console.log("[STATE] form is", form ? "SET" : "NULL", form);
+  }, [form]);
+
+  useEffect(() => {
+    console.log("[STATE] taskId =", taskId);
+  }, [taskId]);
+
+  useEffect(() => {
+    console.log("[STATE] formData =", formData);
+  }, [formData]);
+
   const { data, isLoading: isInventoriesLoading } = useQuery({
     queryKey: ["getAllInventories", email],
     queryFn: async () => {
       const res = await fetch(
         API_URL +
           "/getAllInventoriesForUser?email=" +
-          encodeURIComponent(String(email)),
+          encodeURIComponent(String(email))
       );
       if (!res.ok) throw new Error();
       return z.array(inventorySchema).parse(await res.json());
     },
-    enabled: !!email,
+    enabled: !!email
   });
 
   const {
     data: startedTasks,
     isLoading: isStartedTasksLoading,
-    refetch: refetchStartedTasks,
+    refetch: refetchStartedTasks
   } = useQuery({
     queryKey: ["getStartedTasks", email],
     queryFn: async () => {
       const res = await fetch(
-        API_URL + "/getStartedTasks?email=" + encodeURIComponent(String(email)),
+        API_URL + "/getStartedTasks?email=" + encodeURIComponent(String(email))
       );
       if (!res.ok) throw new Error();
       return z.array(z.record(z.string(), z.any())).parse(await res.json());
     },
-    enabled: !!email,
+    enabled: !!email
   });
 
-  const {
-    data: onGoingTasks,
-    isLoading: isOnGoingTasksLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["getOnGoingTasks", email],
-    queryFn: async () => {
-      const res = await fetch(
-        API_URL + "/ongoingUser?email=" + encodeURIComponent(String(email)),
-      );
-      if (!res.ok) throw new Error();
-      return z.array(z.record(z.string(), z.any())).parse(await res.json());
-    },
-    enabled: !!email,
-  });
+  const { data: onGoingTasks, isLoading: isOnGoingTasksLoading, refetch } =
+    useQuery({
+      queryKey: ["getOnGoingTasks", email],
+      queryFn: async () => {
+        const res = await fetch(
+          API_URL + "/ongoingUser?email=" + encodeURIComponent(String(email))
+        );
+        if (!res.ok) throw new Error();
+        return z.array(z.record(z.string(), z.any())).parse(await res.json());
+      },
+      enabled: !!email
+    });
 
   const launchable = data ? data.filter((i) => i.canStart) : [];
   const takable = onGoingTasks ?? [];
   const started = (startedTasks ?? []).filter(
-    (s: any) => !takable.find((t: any) => t.id === s.id),
+    (s: any) => !takable.find((t: any) => t.id === s.id)
   );
 
   return (
@@ -131,31 +184,33 @@ export default () => {
               size={60}
               className="flex flex-col gap-3 flex-1 pr-2"
             >
-              {!isInventoriesLoading && launchable.length > 0
-                ? launchable.map((inv) => (
-                    <InventoryCard
-                      key={inv.code}
-                      inventory={inv}
-                      onStart={async () => {
-                        const res = await fetch(
-                          API_URL +
-                            "/startTask?inventory_id=" +
-                            inv.code +
-                            "&email=" +
-                            email,
-                        );
-                        if (!res.ok) return;
-                        const json = await res.json();
-                        setForm(FormSchema.parse(json.form));
-                        setTaskId(json.task_id);
-                      }}
-                    />
-                  ))
-                : !isInventoriesLoading && (
-                    <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">
-                      Aucune tâche à lancer
-                    </div>
-                  )}
+              {!isInventoriesLoading && launchable.length > 0 ? (
+                launchable.map((inv) => (
+                  <InventoryCard
+                    key={inv.code}
+                    inventory={inv}
+                    onStart={async () => {
+                      const res = await fetch(
+                        API_URL +
+                          "/startTask?inventory_id=" +
+                          inv.code +
+                          "&email=" +
+                          email
+                      );
+                      if (!res.ok) return;
+                      const json = await res.json();
+                      setForm(FormSchema.parse(json.form));
+                      setTaskId(json.task_id);
+                    }}
+                  />
+                ))
+              ) : (
+                !isInventoriesLoading && (
+                  <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">
+                    Aucune tâche à lancer
+                  </div>
+                )
+              )}
             </ScrollShadow>
           </section>
 
@@ -171,29 +226,29 @@ export default () => {
               size={60}
               className="flex flex-col gap-3 flex-1 pr-2"
             >
-              {!isOnGoingTasksLoading && takable.length > 0
-                ? takable.map((t: any) => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      actionLabel="Poursuivre"
-                      onAction={async () => {
-                        const res = await fetch(
-                          API_URL + "/status?task_id=" + t.id,
-                        );
-                        if (!res.ok) return;
-                        const json = await res.json();
-                        setForm(FormSchema.parse(json.form));
-                        setFormData(json.data);
-                        setTaskId(t.id);
-                      }}
-                    />
-                  ))
-                : !isOnGoingTasksLoading && (
-                    <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">
-                      Aucune demande à prendre
-                    </div>
-                  )}
+              {!isOnGoingTasksLoading && takable.length > 0 ? (
+                takable.map((t: any) => (
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    actionLabel="Poursuivre"
+                    onAction={async () => {
+                      const res = await fetch(API_URL + "/status?task_id=" + t.id);
+                      if (!res.ok) return;
+                      const json = await res.json();
+                      setForm(FormSchema.parse(json.form));
+                      setFormData(json.data);
+                      setTaskId(t.id);
+                    }}
+                  />
+                ))
+              ) : (
+                !isOnGoingTasksLoading && (
+                  <div className="text-xs p-4 bg-white rounded-3xl text-zinc-500 text-center">
+                    Aucune demande à prendre
+                  </div>
+                )
+              )}
             </ScrollShadow>
           </section>
 
@@ -218,9 +273,7 @@ export default () => {
                     task={t}
                     actionLabel="Voir"
                     onClick={async () => {
-                      const res = await fetch(
-                        API_URL + "/status?task_id=" + t.id,
-                      );
+                      const res = await fetch(API_URL + "/status?task_id=" + t.id);
                       if (!res.ok) return;
                       const json = await res.json();
                       setForm(FormSchema.parse(json.form));
@@ -285,8 +338,8 @@ export default () => {
                     {
                       method: "POST",
                       headers: { "content-type": "application/json" },
-                      body: JSON.stringify(formData),
-                    },
+                      body: JSON.stringify(formData)
+                    }
                   );
 
                   const json = await res.json();
